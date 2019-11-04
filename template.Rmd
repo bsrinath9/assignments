@@ -1,6 +1,6 @@
 ---
-title: "Enter title here"
-author: "Enter Your Name here"
+title: Homework 6: Data Exploration in R
+author: Srinath Botsa
 output: rmarkdown::github_document
 ---
 
