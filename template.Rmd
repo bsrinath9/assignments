@@ -1,6 +1,6 @@
 ---
-title: "Enter title here"
-author: "Enter Your Name here"
+title: HW6-Data Exploration in R
+author: Srinath Botsa
 output: rmarkdown::github_document
 ---
 
@@ -8,3 +8,352 @@ output: rmarkdown::github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
+
+
+### HW6-Data Exploration in R
+
+### PART A
+
+#### Questions
+
+#### Section 5.6.7
+
+*Q4:* Look at the number of cancelled flights per day. Is there a pattern? Is the proportion of cancelled flights related to the average delay?
+
+*Answer:*
+
+If we find any **NA** Non-available values in anyone of the columns dep_time,dep_delay,arr_time,arr_delay,air_time then we can consider that the flight is cancelled. 
+
+```{r}
+library(nycflights13)
+library(tidyverse)
+flights
+filter(flights,is.na(dep_delay) | is.na(arr_delay)) # To find NA values
+
+flights %>% group_by(day) %>% summarise(cancelled = mean(is.na(dep_delay)),mean_dep = mean(dep_delay, na.rm = T),          mean_arr = mean(arr_delay, na.rm = T)) %>% ggplot(aes(y = cancelled)) + geom_point(aes(x = mean_dep), colour = "red") +   geom_point(aes(x = mean_arr), colour = "blue") + labs(x = "Avg delay per day", y = "Cancelled flights per day")
+
+```
+
+
+Apparently, as average delay per day increases flights that are cancelled increases.
+
+
+#### Section 5.7.1
+
+*Q2:* Which plane (tailnum) has the worst on-time record?
+
+*Answer:* We need to find the mean of arrival delay(arr_delay) inorder to compute on-time record.
+
+```{r}
+
+flights %>% filter(!is.na(arr_delay)) %>% group_by(tailnum) %>% summarise(prop_time = sum(arr_delay <= 30)/n(), mean_arr = mean(arr_delay, na.rm = TRUE),flights = n()) %>% arrange(desc(prop_time))
+
+```
+  
+Almost all the flights are late . We have planes for which there is no information available to answer the given problem.  
+
+*Q3:* What time of day should you fly if you want to avoid delays as much as possible?
+
+*Answer:* In order to find the good time,we need to find the relation between hour of the day and departure delay (dep_delay)  
+
+```{r}
+
+flights %>% group_by(hour) %>% filter(!is.na(dep_delay))
+
+```
+
+The graph between hour of the day and mean delay for each of the day.
+
+
+```{r}
+
+flights %>% group_by(hour) %>% filter(!is.na(dep_delay))%>% summarise( delay = mean( dep_delay > 0 , na.rm = TRUE)) %>%
+ggplot(aes(hour, delay))+geom_col(fill = "#FF6666")
+
+```
+
+From the above bar chart we can infer that after evening and to early nights,the departure delay rises . Hence it is better to avoid flights during that time.
+
+
+*Q4:* For each destination, compute the total minutes of delay. For each flight, compute the proportion of the total delay for its destination.
+
+*Answer:* Let's find the unique destination values from the dataset 
+
+```{r}
+(distinct_df = flights %>% distinct(dest))
+
+```
+
+We have a total of 104 destinations. Now,let's find the total minutes of each destination (dep_delay should be greater than zero)
+
+```{r}
+
+flights %>% group_by(dest) %>% filter(!is.na(dep_delay)) %>% summarise(tot_mins = sum(dep_delay[dep_delay > 0])) %>% as.data.frame
+
+```
+
+Proportion of total delay for its destination
+
+```{r}
+
+
+flights %>% filter(!is.na(dep_delay)) %>% group_by(tailnum, dest) %>% summarise(mean = mean(dep_delay > 0), number = n()) %>% arrange(desc(mean))
+
+```
+
+### PART B - Chapter 7
+
+*Q1:* Explore the distribution of each of the x, y, and z variables in diamonds. What do you learn? Think about a diamond and how you might decide which dimension is the length, width, and depth.
+
+
+Exploring diamonds dataset
+
+```{r}
+summary(diamonds)
+```
+
+Variable *X*
+
+```{r}
+
+data(diamonds)
+
+ggplot(diamonds) +
+  geom_histogram(mapping= aes(x = x), binwidth = 0.2)
+```
+
+Variable *Y*
+
+```{r}
+ggplot(diamonds) +
+  geom_histogram(mapping= aes(x = y), binwidth = 0.2)
+
+```
+
+Variable *Z*
+
+```{r}
+ggplot(diamonds) +
+  geom_histogram(mapping= aes(x = z), binwidth = 0.2)
+
+```
+
+
+From the above histograms for *X*,*Y* and *Z* variables
+
+1. X and Y are larger than Z
+1. All distributions are right skewed
+1. There are also some diamonds with values of `y` and `z` that are abnormally large.
+1. There are diamonds with `y == 58.9` and `y == 31.8`, and one with `z == 31.8`. 
+
+```{r}
+diamonds %>%
+  arrange(desc(y)) %>%
+  head()
+```
+
+```{r}
+
+diamonds %>%
+  arrange(desc(z)) %>%
+  head()
+```
+
+```{r}
+?diamonds
+```
+
+As per the dataset's description, 
+
+* x is length in mm (0–10.74) 
+
+* y is width in mm (0–58.9)
+
+* z is depth in mm (0–31.8)
+
+*Q2:*Explore the distribution of price. Do you anything unusual or surprising? (Hint: Carefully think about the binwidth and make sure you try a wide range of values.)
+
+*Answer:* 
+The distribution of price for diamonds dataset is as shown below using frequency plot.
+```{r}
+ggplot(diamonds) + 
+  geom_freqpoly(aes(x = price), binwidth = 10) +
+  xlim(c(1000, 2000))
+```
+
+From the plot, it appears that there no diamonds between price range $1450 and $1550
+
+
+```{r}
+ggplot(diamonds) + 
+  geom_freqpoly(aes(x = price), binwidth = 20) +
+  xlim(c(1000, 2000))
+```
+
+*Q3:* How many diamonds are 0.99 carat? How many are 1 carat? What do you think is the cause of the difference?
+
+*Answer:*  Using `filter()` function we can find diamonds that are 0.99 carat and 1 carat. `count()` function is used to calculate the total number. Other way is to find the value by running the dataframe itself,which return rows using filter condition.
+
+```{r}
+diamonds %>% filter(carat == 0.99) %>% count()
+```
+```{r}
+diamonds %>% filter(carat == 1) %>% count()
+```
+
+Another way of finding the diamonds with particular carat value:
+
+Diamonds with carat value=0.99
+```{r}
+(diamonds %>% filter(carat ==0.99))
+```
+
+Diamonds with carat value=1
+
+```{r}
+(diamonds %>% filter(carat ==1))
+```
+
+
+#### Section 7.5.1.1:
+
+
+*Q2:* What variable in the diamonds dataset is most important for predicting the price of a diamond? How is that variable correlated with cut? Why does the combination of those two relationships lead to lower quality diamonds being more expensive?
+
+*Answer:* The diamonds dataset has categorical attributes *cut*,*color*,*clarity* and *carat* which we can use to find the correlation .
+
+```{r}
+
+diamonds %>% mutate(cut = as.numeric(cut),color = as.numeric(color),clarity = as.numeric(clarity)) %>% select(price,everything()) %>% cor()
+
+```
+
+From correlation matrix, *Price* and *carat* are highly correlated (0.921). Hence, we can consider *Carat* variable as the most important factor for predicting the price of a diamond.
+
+
+
+A plot between price and carat is as follows
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) + geom_point(color="blue",alpha=0.5)
+
+```
+
+
+Carat correlation with cut: Since cut and carat are categorical and continuous variables respectively, boxplot would be good the visualization idiom 
+```{r}
+diamonds %>%  ggplot(aes(x=cut, y=carat)) + geom_boxplot()
+
+```
+
+*Extra credit*
+
+*Q3:* Install the ggstance package, and create a horizontal boxplot. How does this compare to using coord_flip()?
+
+Horizontal Boxplot:
+
+```{r}
+library(ggstance)
+
+diamonds %>% ggplot(aes(carat, cut)) + geom_boxploth()
+```
+
+Horizontal boxplot with coord_flilp():
+
+```{r}
+library(ggstance)
+
+diamonds %>% ggplot(aes(cut, carat)) + geom_boxplot() + coord_flip()
+
+```
+
+Both plots are same.
+
+
+
+
+
+### Section 7.5.2.1
+
+*Q1:* How could you rescale the count dataset above to more clearly show the distribution of cut within colour, or colour within cut?
+
+*Answer:* We can calculate the proportion of each cut within color or color within cut.
+
+```{r}
+diamonds %>% count(color, cut) %>% group_by(color) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot() +
+  geom_tile(mapping = aes(x = color, y = cut, fill = prop)) +
+  labs(title = 'Distribution of cut within color')
+```
+
+
+
+*Q2:* Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?
+
+*Answer:*  The plot for average flight delays by destination and month of year is as follows using geom_title().
+
+```{r}
+
+flights %>% group_by(dest, month) %>%
+  summarize(avg_dep_delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot() +
+  geom_tile(mapping = aes(x = month, y = dest, fill = avg_dep_delay))
+
+```
+
+
+The plot is not easy to read because:
+
+* Color scale range makes it difficult to compare airports and months.
+* White fields represent missing values.
+
+We need to rearrange the missing values to the bottom of the graph and adjust the gradient.
+
+```{r}
+flights %>% group_by(dest, month) %>%
+  summarize(avg_dep_delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(dest) %>%
+  mutate(n_month = n())%>%
+  ggplot() +
+  geom_tile(mapping = aes(x = factor(month),
+                          y = reorder(dest, n_month),
+                          fill = avg_dep_delay)) +
+  scale_fill_gradient2(low = 'yellow', mid = 'orange', high = 'red',
+                       midpoint = 35)
+
+```
+*Extra Credit:*
+
+*Q1:* Instead of summarising the conditional distribution with a boxplot, you could use a frequency polygon. What do you need to consider when using cut_width() vs cut_number()? How does that impact a visualisation of the 2d distribution of carat and price?
+
+*Answer:* `cut_width()` and `cut_number()` form a group. The bins would be automatically calculated even if we use either of them.We can use cut_number as there are five groups.
+
+```{r message=FALSE}
+ggplot(data = diamonds,mapping = aes(color = cut_number(carat, 5), x = price)) + geom_freqpoly() +labs(x = "Price", y = "Count", color = "Carat")
+```
+
+If cut_width is used ,we can use 0.5 and 1 carat diamond observations.The frequency plot would be as below
+
+```{r}
+
+ggplot(data = diamonds,mapping = aes(color = cut_width(carat, 1, boundary = 0), x = price)) + geom_freqpoly() + labs(x = "Price", y = "Count", color = "Carat")
+```
+
+
+REFERENCES:
+
+https://r4ds.had.co.nz/transform.html
+
+https://www.tutorialkart.com/r-tutorial/sort-a-data-frame-by-column-in-ascending-and-descending-orders/  
+
+https://discuss.analyticsvidhya.com/t/how-to-count-the-missing-value-in-r/2949/5
+
+https://ggplot2.tidyverse.org/reference/geom_histogram.html
+
+https://stackoverflow.com/questions/45113597/error-unable-to-start-png-device
+
+https://stackoverflow.com/questions/38788357/change-bar-plot-colour-in-geom-bar-with-ggplot2-in-r
+
+
